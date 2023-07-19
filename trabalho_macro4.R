@@ -496,57 +496,6 @@ outflows_bp[, -1] <- sapply(outflows_bp[, -1], clean_numeric)
 
 # Nossos dois dataframes estão ajustados
 
-######################## PULAR ESSA PARTE ######################################
-
-# Agora, para converter para frequência mensal, precisamos fazer a interpolação
-
-library(zoo)
-
-inflows_bp$Trimestre <- as.yearqtr(inflows_bp$Trimestre, format = "%Y Q %q")
-
-inflows_bp$Trimestre <- as.Date(inflows_bp$Trimestre)
-
-meses <- lapply(X = inflows_bp$Trimestre, FUN = seq.Date, by = "month", length.out = 3)
-
-meses <- data.frame(Trimestre = do.call(what = c, meses))
-
-library(dplyr)
-
-inflows_bp <- left_join(x = meses, y = inflows_bp, by = "Trimestre")
-
-col_names <- names(inflows_bp)[-1]
-
-# Loop sobre as colunas
-for (col in col_names) {
-  # Realiza a interpolação usando na.spline
-  inflows_bp[[col]] <- na.spline(object = inflows_bp[[col]])
-}
-
-# O dataframe inflows_bp agora contém as colunas interpoladas
-
-# Procedendo agora para outflows_bp
-
-outflows_bp$Trimestre <- as.yearqtr(outflows_bp$Trimestre, format = "%Y Q %q")
-
-outflows_bp$Trimestre <- as.Date(outflows_bp$Trimestre)
-
-meses <- lapply(X = outflows_bp$Trimestre, FUN = seq.Date, by = "month", length.out = 3)
-
-meses <- data.frame(Trimestre = do.call(what = c, meses))
-
-outflows_bp <- left_join(x = meses, y = outflows_bp, by = "Trimestre")
-
-col_names <- names(outflows_bp)[-1]
-
-# Loop sobre as colunas
-for (col in col_names) {
-  # Realiza a interpolação usando na.spline
-  outflows_bp[[col]] <- na.spline(object = outflows_bp[[col]])
-}
-
-################################################################################
-
-
 # Agora, precisamos estacionarizar as séries: iremos tomar as primeiras diferenças
 
 # Calculando a primeira diferença para todas as colunas (exceto a primeira coluna com os meses)
