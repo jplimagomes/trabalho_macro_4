@@ -496,6 +496,8 @@ outflows_bp[, -1] <- sapply(outflows_bp[, -1], clean_numeric)
 
 # Nossos dois dataframes estão ajustados
 
+######################## PULAR ESSA PARTE ######################################
+
 # Agora, para converter para frequência mensal, precisamos fazer a interpolação
 
 library(zoo)
@@ -542,6 +544,9 @@ for (col in col_names) {
   outflows_bp[[col]] <- na.spline(object = outflows_bp[[col]])
 }
 
+################################################################################
+
+
 # Agora, precisamos estacionarizar as séries: iremos tomar as primeiras diferenças
 
 # Calculando a primeira diferença para todas as colunas (exceto a primeira coluna com os meses)
@@ -551,6 +556,12 @@ inflows_bp <- inflows_bp %>%
 outflows_bp <- outflows_bp %>%
   mutate(across(-1, ~ . - lag(.)))
 
+# Excluindo as últimas seis linhas do dataframe
+#inflows_bp1 <- head(inflows_bp, n = nrow(inflows_bp) - 6)
+
+#outflows_bp1 <- head(outflows_bp, n = nrow(outflows_bp) - 6)
+
+
 # Determinando a estrutura do modelo
 
 library(dfms)
@@ -559,16 +570,14 @@ library(xts)
 # A função ICr( ) pode ser aplicada para determinar o número de fatores: ela 
 # computa 3 information criteria propostos em Bai and NG (2002)
 
-ic_inflows <- ICr(inflows_bp)
+ic_inflows <- ICr(inflows_bp[, -1])
 
 print(ic_inflows)
-
-plot(ic_inflows)
 
 screeplot(ic_inflows)
 
 # Pelo screeplot, podemos escolher 2 fatores para estimar o modelo, já que 
-# aparentemente os fatores 3, 4 e 5 em diante não explicam muito da variância
+# aparentemente a maior queda do poder explicativo ocorre entre o segundo e terceiro fatores
 
 # Agora, devemos a lag-order do VAR de fatores na equação de transição
 # Isto é feito usando o pacote vars, na função VARselect(), com as
@@ -577,36 +586,68 @@ screeplot(ic_inflows)
 # Utilizando vars::VARselect() com 2 componentes principais para estimar a
 # ordem do lag do VAR
 
-vars::VARselect(ic_inflows$F_pca[ ,1:2])
+vars::VARselect(ic_inflows$F_pca[ , 1:2])
 
-# Iremos utilizar 10 lags
+# Iremos utilizar 3 lags
 
-# Estimando o modelo com 2 fatores e 10 lags
+# Estimando o modelo com 2 fatores e 3 lags
 
-modelo_inflows <- DFM(inflows_bp, r = 2, p = 10) 
+modelo_inflows <- DFM(inflows_bp[, -1], r = 2, p = 3)
+
+print(modelo_inflows)
+
+plot(modelo_inflows) # Plotando os dois fatores
+
+# Podemos então obter um dataframe com as estimativas dos dois fatores (por PCR) para capital inflows
+
+f1_pcr_inflows <- as.data.frame(modelo_inflows)[1:(nrow(inflows_bp)-1), "Value"] # Primeiro fator
+
+f2_pcr_inflows <- as.data.frame(modelo_inflows)[(nrow(inflows_bp)):(2*nrow(inflows_bp)-2), "Value"] # Segundo fator
+
+fatores_inflows <- cbind(f1_pcr_inflows, f2_pcr_inflows)
+
+fatores_inflows <- rbind(NA, fatores_inflows)
+
+fatores_inflows <- cbind(inflows_bp$Trimestre, fatores_inflows)
+
 
 # Agora, para outflows
 
-ic_outflows <- ICr(outflows_bp)
+ic_outflows <- ICr(outflows_bp[, -1])
 
 print(ic_outflows)
 
-plot(ic_outflows)
-
 screeplot(ic_outflows)
 
-# Vamos utilizar 1 fator para outflows
+# Vamos utilizar 1 fator para capital outflows
 
 vars::VARselect(ic_outflows$F_pca[ , 1])
 
-# Estimando o modelo com 1 fator de 10 lags
+# Estimando o modelo com 1 fator de 7 lags
 
-modelo_outflows <- DFM(outflows_bp, r = 1, p = 10)
+modelo_outflows <- DFM(outflows_bp[, -1], r = 1, p = 7)
+
+print(modelo_outflows)
+
+plot(modelo_outflows) # Plotando o fator
+
+# Podemos então obter um dataframe com as estimativas do fator (por PCR) para capital outflows
+
+View(as.data.frame(modelo_outflows))
+
+f1_pcr_outflows <- as.data.frame(modelo_outflows)[1:(nrow(outflows_bp)-1), "Value"]
+
+fatores_outflows <- cbind(NA, f1_pcr_outflows)
+
+fatores_outflows <- rbind(NA, fatores_outflows)
+
+fatores_outflows <- cbind(outflows_bp$Trimestre, fatores_outflows)
+
+fatores_outflows <- fatores_outflows[ , -2]
+
+View(fatores_outflows)
 
 
 
 
-
-
-
-
+################################################################################
